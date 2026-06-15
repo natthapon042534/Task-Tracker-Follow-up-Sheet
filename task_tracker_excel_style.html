@@ -1,0 +1,1322 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบบันทึกและติดตามสถานะงาน (Task Tracker - Excel Style)</title>
+    <!-- Tailwind CSS for elegant design -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons for modern UI icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Sarabun:ital,wght=0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500;1,600;1,700&display=swap');
+        body {
+            font-family: 'Sarabun', sans-serif;
+        }
+        /* Excel Scrollbar Styling */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #c1c1c1;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #a8a8a8;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800 min-h-screen flex flex-col">
+
+    <!-- Header / Navigation Bar -->
+    <header class="bg-[#107c41] text-white shadow-md">
+        <div class="container mx-auto px-4 py-3 flex flex-col md:flex-row justify-between items-center gap-4">
+            <div class="flex items-center gap-3">
+                <div class="bg-white p-1.5 rounded-lg text-[#107c41]">
+                    <i data-lucide="file-spreadsheet" class="w-8 h-8"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold tracking-wide">Task Tracker & Follow-up Sheet</h1>
+                    <p class="text-xs text-green-100">ระบบบันทึกและติดตามสถานะงาน</p>
+                </div>
+            </div>
+            <!-- Quick Actions -->
+            <div class="flex gap-2 text-xs">
+                <button onclick="exportToCSV()" class="bg-white hover:bg-gray-100 text-[#107c41] font-semibold py-2 px-4 rounded-md shadow flex items-center gap-2 transition duration-150">
+                    <i data-lucide="download" class="w-4 h-4"></i> Export to Excel (CSV)
+                </button>
+                <button onclick="openAddModal()" class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded-md shadow flex items-center gap-2 transition duration-150">
+                    <i data-lucide="plus-circle" class="w-4 h-4"></i> เพิ่มงานใหม่
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="flex-grow container mx-auto px-4 py-6 flex flex-col gap-6">
+        
+        <!-- Dashboard Year Selector -->
+        <section class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div>
+                <h2 class="text-base font-bold text-gray-900 flex items-center gap-2">
+                    <i data-lucide="bar-chart-3" class="w-5 h-5 text-[#107c41]"></i>
+                    สรุปภาพรวมการทำงาน (Dashboard Analytics)
+                </h2>
+                <p class="text-xs text-gray-500">ติดตามและวิเคราะห์สถิติตามช่วงปีและหมวดหมู่ของแผนกทำงาน</p>
+            </div>
+            <div class="flex items-center gap-2 w-full sm:w-auto">
+                <span class="text-xs font-semibold text-gray-600 whitespace-nowrap">ปีสรุปสถิติ:</span>
+                <select id="dashboard-year" onchange="applyFilters()" class="w-full sm:w-56 border border-gray-300 rounded-lg px-3 py-1.5 text-xs bg-white font-bold text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#107c41]">
+                    <option value="">-- แสดงทั้งหมดทุกปี (All Years) --</option>
+                    <option value="2568">พ.ศ. 2568 (ค.ศ. 2025)</option>
+                    <option value="2569" selected>พ.ศ. 2569 (ค.ศ. 2026)</option>
+                    <option value="2570">พ.ศ. 2570 (ค.ศ. 2027)</option>
+                    <option value="2571">พ.ศ. 2571 (ค.ศ. 2028)</option>
+                </select>
+            </div>
+        </section>
+
+        <!-- Summary Dashboard Widgets (6 Cards) -->
+        <section class="grid grid-cols-2 md:grid-cols-6 gap-4">
+            <!-- Total Tasks -->
+            <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex items-center gap-3">
+                <div class="p-2.5 bg-blue-50 text-blue-600 rounded-lg">
+                    <i data-lucide="layers" class="w-5 h-5"></i>
+                </div>
+                <div>
+                    <p class="text-[10px] text-gray-500 font-medium">งานทั้งหมด</p>
+                    <h3 class="text-xl font-bold text-gray-900" id="stat-total">0</h3>
+                </div>
+            </div>
+            <!-- Not Started -->
+            <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex items-center gap-3">
+                <div class="p-2.5 bg-gray-100 text-gray-500 rounded-lg">
+                    <i data-lucide="circle-dashed" class="w-5 h-5"></i>
+                </div>
+                <div>
+                    <p class="text-[10px] text-gray-500 font-medium">ยังไม่ได้เริ่มงาน</p>
+                    <h3 class="text-xl font-bold text-gray-900" id="stat-not-started">0</h3>
+                </div>
+            </div>
+            <!-- In Progress -->
+            <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex items-center gap-3">
+                <div class="p-2.5 bg-yellow-50 text-yellow-600 rounded-lg">
+                    <i data-lucide="clock" class="w-5 h-5"></i>
+                </div>
+                <div>
+                    <p class="text-[10px] text-gray-500 font-medium">กำลังดำเนินการ</p>
+                    <h3 class="text-xl font-bold text-gray-900" id="stat-pending">0</h3>
+                </div>
+            </div>
+            <!-- Completed -->
+            <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex items-center gap-3">
+                <div class="p-2.5 bg-green-50 text-green-600 rounded-lg">
+                    <i data-lucide="check-circle" class="w-5 h-5"></i>
+                </div>
+                <div>
+                    <p class="text-[10px] text-gray-500 font-medium">เสร็จเรียบร้อย</p>
+                    <h3 class="text-xl font-bold text-gray-900" id="stat-completed">0</h3>
+                </div>
+            </div>
+            <!-- Overdue -->
+            <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex items-center gap-3">
+                <div class="p-2.5 bg-red-50 text-red-600 rounded-lg">
+                    <i data-lucide="alert-triangle" class="w-5 h-5"></i>
+                </div>
+                <div>
+                    <p class="text-[10px] text-gray-500 font-medium">เลยกำหนดส่ง</p>
+                    <h3 class="text-xl font-bold text-gray-900" id="stat-overdue">0</h3>
+                </div>
+            </div>
+            <!-- Success Rate -->
+            <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex items-center gap-3">
+                <div class="p-2.5 bg-purple-50 text-purple-600 rounded-lg">
+                    <i data-lucide="percent" class="w-5 h-5"></i>
+                </div>
+                <div>
+                    <p class="text-[10px] text-gray-500 font-medium">ความสำเร็จ</p>
+                    <h3 class="text-xl font-bold text-gray-900" id="stat-rate">0%</h3>
+                </div>
+            </div>
+        </section>
+
+        <!-- Dashboard Breakdown Analytics -->
+        <section class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <!-- Task Type Breakdown -->
+            <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex flex-col gap-3">
+                <h4 class="text-xs font-bold text-gray-700 flex items-center gap-1.5 border-b pb-2">
+                    <i data-lucide="pie-chart" class="w-4 h-4 text-blue-600"></i> สัดส่วนประเภทงาน (Task Type Ratio)
+                </h4>
+                <div id="type-breakdown-container" class="space-y-3 text-xs flex-grow flex flex-col justify-center">
+                    <!-- Dynamic Progress Bars Loaded from JS -->
+                </div>
+            </div>
+
+            <!-- Task Priority & Top Departments -->
+            <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex flex-col gap-3">
+                <h4 class="text-xs font-bold text-gray-700 flex items-center gap-1.5 border-b pb-2">
+                    <i data-lucide="tag" class="w-4 h-4 text-orange-500"></i> ระดับความสำคัญและแผนก (Top Departments)
+                </h4>
+                <div id="priority-dept-container" class="space-y-3 text-xs flex-grow flex flex-col justify-between">
+                    <!-- Dynamic Department Insights Loaded from JS -->
+                </div>
+            </div>
+
+            <!-- Monthly Task Load Grid Heatmap -->
+            <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex flex-col gap-3">
+                <h4 class="text-xs font-bold text-gray-700 flex items-center gap-1.5 border-b pb-2">
+                    <i data-lucide="calendar-days" class="w-4 h-4 text-purple-600"></i> การกระจายปริมาณงานรายเดือน (Monthly Heatmap)
+                </h4>
+                <div class="grid grid-cols-4 gap-2 text-center text-[10px] py-1" id="monthly-grid-container">
+                    <!-- Dynamic Month Cells Loaded from JS -->
+                </div>
+            </div>
+        </section>
+
+        <!-- Filters & Tools Bar -->
+        <section class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex flex-col md:flex-row gap-4 items-center justify-between">
+            <div class="flex flex-wrap items-center gap-3 w-full md:w-auto">
+                <div class="relative w-full md:w-72">
+                    <span class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-400">
+                        <i data-lucide="search" class="w-4 h-4"></i>
+                    </span>
+                    <input type="text" id="search-input" oninput="applyFilters()" placeholder="ค้นหางาน, สถานที่, เลข PR/PO/JR..." class="w-full pl-10 pr-4 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#107c41]">
+                </div>
+                
+                <select id="filter-month" onchange="applyFilters()" class="border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#107c41]">
+                    <option value="">-- ทุกเดือน --</option>
+                    <option value="January">มกราคม (January)</option>
+                    <option value="February">กุมภาพันธ์ (February)</option>
+                    <option value="March">มีนาคม (March)</option>
+                    <option value="April">เมษายน (April)</option>
+                    <option value="May">พฤษภาคม (May)</option>
+                    <option value="June">มิถุนายน (June)</option>
+                    <option value="July">กรกฎาคม (July)</option>
+                    <option value="August">สิงหาคม (August)</option>
+                    <option value="September">กันยายน (September)</option>
+                    <option value="October">ตุลาคม (October)</option>
+                    <option value="November">พฤศจิกายน (November)</option>
+                    <option value="December">ธันวาคม (December)</option>
+                </select>
+
+                <select id="filter-priority" onchange="applyFilters()" class="border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#107c41]">
+                    <option value="">-- ทุกระดับความสำคัญ --</option>
+                    <option value="High">High</option>
+                    <option value="Medium">Medium</option>
+                    <option value="Low">Low</option>
+                </select>
+
+                <select id="filter-status" onchange="applyFilters()" class="border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#107c41]">
+                    <option value="">-- ทุกสถานะ --</option>
+                    <option value="Not Started">ยังไม่ได้เริ่มงาน (Not Started)</option>
+                    <option value="In Progress">กำลังดำเนินการ (In Progress)</option>
+                    <option value="Completed">เสร็จเรียบร้อย (Completed)</option>
+                    <option value="Overdue">เลยกำหนดส่ง (Overdue)</option>
+                </select>
+            </div>
+            
+            <div class="text-xs text-gray-500 font-medium">
+                แสดงผล <span id="displayed-count" class="text-gray-900 font-bold">0</span> จากทั้งหมด <span id="total-count" class="text-gray-900 font-bold">0</span> รายการ
+            </div>
+        </section>
+
+        <!-- Excel-Like Data Table Container -->
+        <section class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden flex-grow flex flex-col">
+            <!-- Alert Banner within table -->
+            <div class="bg-emerald-50 px-4 py-2 border-b border-emerald-100 flex items-center justify-between text-xs text-emerald-800">
+                <div class="flex items-center gap-2">
+                    <i data-lucide="info" class="w-4 h-4"></i>
+                    <span>คำแนะนำ: ข้อมูลจะกรองตามปี พ.ศ. ที่เลือกจากเมนูด้านบนอัตโนมัติ และคุณสามารถดับเบิ้ลคลิกเพื่อแก้ไขข้อมูลได้อย่างรวดเร็ว</span>
+                </div>
+            </div>
+
+            <!-- Scrollable spreadsheet wrapper -->
+            <div class="overflow-x-auto overflow-y-auto max-h-[550px] flex-grow">
+                <table class="w-full text-left border-collapse table-fixed min-w-[2100px]">
+                    <!-- Table Header -->
+                    <thead class="sticky top-0 bg-[#f3f4f6] text-gray-700 text-xs font-semibold border-b border-gray-300 z-10 shadow-sm">
+                        <tr>
+                            <th class="w-[60px] p-2.5 border-r border-gray-300 text-center bg-gray-200">No.</th>
+                            <th class="w-[110px] p-2.5 border-r border-gray-300">Month</th>
+                            <th class="w-[250px] p-2.5 border-r border-gray-300">Job List</th>
+                            <th class="w-[150px] p-2.5 border-r border-gray-300">Location</th>
+                            <th class="w-[200px] p-2.5 border-r border-gray-300">Issue / Anomaly</th>
+                            <th class="w-[130px] p-2.5 border-r border-gray-300">Task Type</th>
+                            <th class="w-[120px] p-2.5 border-r border-gray-300">JR No.</th>
+                            <th class="w-[120px] p-2.5 border-r border-gray-300">PR No.</th>
+                            <th class="w-[120px] p-2.5 border-r border-gray-300">PO No.</th>
+                            <th class="w-[100px] p-2.5 border-r border-gray-300 text-center">Priority</th>
+                            <th class="w-[150px] p-2.5 border-r border-gray-300">Owner Dept</th>
+                            <th class="w-[150px] p-2.5 border-r border-gray-300">Assigned Staff</th>
+                            <th class="w-[110px] p-2.5 border-r border-gray-300 text-center">Request Date</th>
+                            <th class="w-[110px] p-2.5 border-r border-gray-300 text-center">Follow-up Date</th>
+                            <th class="w-[250px] p-2.5 border-r border-gray-300">Follow-up / Tracking Notes</th>
+                            <th class="w-[110px] p-2.5 border-r border-gray-300 text-center">Due Date</th>
+                            <th class="w-[110px] p-2.5 border-r border-gray-300 text-center">Actual Comp.</th>
+                            <th class="w-[120px] p-2.5 border-r border-gray-300 text-center">Status</th>
+                            <th class="w-[110px] p-2.5 text-center bg-gray-100">Actions</th>
+                        </tr>
+                    </thead>
+                    <!-- Table Body -->
+                    <tbody id="table-body" class="text-xs divide-y divide-gray-200">
+                        <!-- Rows will be injected dynamically -->
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- Table Footer Status Info -->
+            <div class="bg-gray-50 border-t border-gray-200 px-4 py-3 text-xs text-gray-500 flex justify-between items-center">
+                <div class="flex items-center gap-4">
+                    <span class="flex items-center gap-1"><span class="w-3 h-3 rounded-full bg-red-100 border border-red-300 inline-block"></span> High Priority</span>
+                    <span class="flex items-center gap-1"><span class="w-3 h-3 rounded-full bg-yellow-100 border border-yellow-300 inline-block"></span> Medium Priority</span>
+                    <span class="flex items-center gap-1"><span class="w-3 h-3 rounded-full bg-blue-100 border border-blue-300 inline-block"></span> Low Priority</span>
+                </div>
+                <div>
+                    <span>ดับเบิ้ลคลิกในแถวเพื่อดูรายละเอียดข้อมูลอย่างรวดเร็ว</span>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Modal for Adding / Editing Row -->
+    <div id="task-modal" class="hidden fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col my-8 max-h-[90vh]">
+            <!-- Modal Header -->
+            <div class="bg-[#107c41] text-white p-4 flex justify-between items-center">
+                <div class="flex items-center gap-2">
+                    <i data-lucide="edit-3" class="w-5 h-5"></i>
+                    <h3 id="modal-title" class="font-bold text-lg">เพิ่มข้อมูลงานบันทึกใหม่</h3>
+                </div>
+                <button onclick="closeModal()" class="text-white/80 hover:text-white transition">
+                    <i data-lucide="x" class="w-6 h-6"></i>
+                </button>
+            </div>
+            
+            <!-- Modal Body (Form) -->
+            <form id="task-form" onsubmit="saveTask(event)" class="p-6 overflow-y-auto flex-grow grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                <input type="hidden" id="task-id">
+                
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="block text-gray-600 font-semibold mb-1">Month / เดือน *</label>
+                        <select id="form-month" required class="w-full border border-gray-300 rounded px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-[#107c41]">
+                            <option value="">-- เลือกเดือน --</option>
+                            <option value="January">มกราคม (January)</option>
+                            <option value="February">กุมภาพันธ์ (February)</option>
+                            <option value="March">มีนาคม (March)</option>
+                            <option value="April">เมษายน (April)</option>
+                            <option value="May">พฤษภาคม (May)</option>
+                            <option value="June">มิถุนายน (June)</option>
+                            <option value="July">กรกฎาคม (July)</option>
+                            <option value="August">สิงหาคม (August)</option>
+                            <option value="September">กันยายน (September)</option>
+                            <option value="October">ตุลาคม (October)</option>
+                            <option value="November">พฤศจิกายน (November)</option>
+                            <option value="December">ธันวาคม (December)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-gray-600 font-semibold mb-1">Year / ปี (พ.ศ.) *</label>
+                        <select id="form-year" required class="w-full border border-gray-300 rounded px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-[#107c41]">
+                            <option value="2568">2568</option>
+                            <option value="2569">2569</option>
+                            <option value="2570">2570</option>
+                            <option value="2571">2571</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="md:col-span-2">
+                    <label class="block text-gray-600 font-semibold mb-1">Job List / รายการงาน *</label>
+                    <input type="text" id="form-job-list" required placeholder="ระบุรายละเอียดงานหรือชื่อโครงงาน" class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#107c41]">
+                </div>
+
+                <div>
+                    <label class="block text-gray-600 font-semibold mb-1">Location / สถานที่</label>
+                    <input type="text" id="form-location" placeholder="เช่น อาคาร A, หน้างานหลัก" class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#107c41]">
+                </div>
+
+                <div class="md:col-span-2">
+                    <label class="block text-gray-600 font-semibold mb-1">Issue / Anomaly / ปัญหาที่พบ</label>
+                    <input type="text" id="form-issue" placeholder="ระบุความผิดปกติหรือปัญหา (ถ้ามี)" class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#107c41]">
+                </div>
+
+                <div>
+                    <label class="block text-gray-600 font-semibold mb-1">Task Type / ประเภทงาน</label>
+                    <select id="form-task-type" class="w-full border border-gray-300 rounded px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-[#107c41]">
+                        <option value="">-- เลือกประเภท --</option>
+                        <option value="Corrective">Corrective (แก้ไข)</option>
+                        <option value="Preventive">Preventive (ป้องกัน)</option>
+                        <option value="Improvement">Improvement (ปรับปรุง)</option>
+                        <option value="Routine">Routine (งานประจำ)</option>
+                        <option value="Special Project">Special Project (พิเศษ)</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-gray-600 font-semibold mb-1">JR No.</label>
+                    <input type="text" id="form-jr-no" placeholder="เช่น JR-2026-001" class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#107c41]">
+                </div>
+
+                <div>
+                    <label class="block text-gray-600 font-semibold mb-1">PR No.</label>
+                    <input type="text" id="form-pr-no" placeholder="เช่น PR-100234" class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#107c41]">
+                </div>
+
+                <div>
+                    <label class="block text-gray-600 font-semibold mb-1">PO No.</label>
+                    <input type="text" id="form-po-no" placeholder="เช่น PO-450098" class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#107c41]">
+                </div>
+
+                <div>
+                    <label class="block text-gray-600 font-semibold mb-1">Priority / ความสำคัญ *</label>
+                    <select id="form-priority" required class="w-full border border-gray-300 rounded px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-[#107c41]">
+                        <option value="Medium">Medium (ปกติ)</option>
+                        <option value="High">High (ด่วน/สำคัญ)</option>
+                        <option value="Low">Low (ต่ำ)</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-gray-600 font-semibold mb-1">Owner Department</label>
+                    <input type="text" id="form-owner-dept" placeholder="แผนกที่รับผิดชอบ" class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#107c41]">
+                </div>
+
+                <div>
+                    <label class="block text-gray-600 font-semibold mb-1">Assigned Staff / ผู้รับผิดชอบ</label>
+                    <input type="text" id="form-assigned-staff" placeholder="ระบุชื่อเจ้าหน้าที่" class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#107c41]">
+                </div>
+
+                <div>
+                    <label class="block text-gray-600 font-semibold mb-1">Request Date / วันที่แจ้งขอ</label>
+                    <input type="date" id="form-request-date" class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#107c41]">
+                </div>
+
+                <div>
+                    <label class="block text-gray-600 font-semibold mb-1">Follow-up Date / วันที่ติดตาม</label>
+                    <input type="date" id="form-followup-date" class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#107c41]">
+                </div>
+
+                <div>
+                    <label class="block text-gray-600 font-semibold mb-1">Due Date / วันกำหนดส่ง</label>
+                    <input type="date" id="form-due-date" class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#107c41]">
+                </div>
+
+                <div class="md:col-span-3">
+                    <label class="block text-gray-600 font-semibold mb-1">Follow-up / Tracking Notes (บันทึกการติดตามงาน)</label>
+                    <textarea id="form-notes" rows="2" placeholder="ใส่บันทึกรายละเอียดเพิ่มเติมการติดต่อประสานงานหรือความคืบหน้า..." class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#107c41]"></textarea>
+                </div>
+
+                <div>
+                    <label class="block text-gray-600 font-semibold mb-1 text-emerald-700">Status / สถานะของงาน *</label>
+                    <select id="form-status" required onchange="handleStatusChange()" class="w-full border-2 border-emerald-300 rounded px-3 py-2 bg-white font-semibold text-emerald-800 focus:outline-none focus:ring-2 focus:ring-[#107c41]">
+                        <option value="Not Started">⚪ ยังไม่ได้เริ่มงาน (Not Started)</option>
+                        <option value="In Progress">🟡 กำลังดำเนินการ (In Progress)</option>
+                        <option value="Completed">🟢 เสร็จเรียบร้อย (Completed)</option>
+                    </select>
+                </div>
+
+                <div class="md:col-span-2">
+                    <label class="block text-gray-600 font-semibold mb-1">Actual Completion Date / วันที่เสร็จจริง</label>
+                    <input type="date" id="form-completion-date" class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#107c41]">
+                </div>
+                
+                <!-- Modal Footer Controls -->
+                <div class="md:col-span-3 flex justify-end gap-3 border-t border-gray-100 pt-4 mt-2">
+                    <button type="button" onclick="closeModal()" class="px-4 py-2 border border-gray-300 rounded text-gray-700 hover:bg-gray-100 transition">ยกเลิก</button>
+                    <button type="submit" class="px-5 py-2 bg-[#107c41] hover:bg-[#0e6b37] text-white font-bold rounded shadow transition">บันทึกข้อมูล</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal for Viewing Row Details -->
+    <div id="view-modal" class="hidden fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col my-8 max-h-[90vh]">
+            <!-- Modal Header -->
+            <div class="bg-blue-600 text-white p-4 flex justify-between items-center">
+                <div class="flex items-center gap-2">
+                    <i data-lucide="eye" class="w-5 h-5"></i>
+                    <h3 class="font-bold text-lg">รายละเอียดงานบันทึก (Task Details)</h3>
+                </div>
+                <button onclick="closeViewModal()" class="text-white/80 hover:text-white transition">
+                    <i data-lucide="x" class="w-6 h-6"></i>
+                </button>
+            </div>
+            
+            <!-- Modal Body (Dynamic content) -->
+            <div class="p-6 overflow-y-auto flex-grow text-sm space-y-4" id="view-details-content">
+                <!-- Data will be loaded here dynamically -->
+            </div>
+            
+            <!-- Modal Footer -->
+            <div class="bg-gray-50 border-t border-gray-100 p-4 flex justify-end gap-3">
+                <button id="view-edit-btn" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded shadow transition flex items-center gap-1.5 text-xs">
+                    <i data-lucide="edit-2" class="w-3.5 h-3.5"></i> แก้ไขข้อมูลนี้
+                </button>
+                <button onclick="closeViewModal()" class="px-4 py-2 border border-gray-300 rounded text-gray-700 hover:bg-gray-100 transition text-xs">ปิด</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Custom Delete Confirmation Modal (Avoid confirm()) -->
+    <div id="delete-modal" class="hidden fixed inset-0 bg-black/55 backdrop-blur-xs flex items-center justify-center z-[60] p-4">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-sm overflow-hidden p-6 text-center">
+            <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 text-red-600 mb-4">
+                <i data-lucide="alert-triangle" class="h-6 w-6"></i>
+            </div>
+            <h3 class="text-lg font-bold text-gray-900 mb-2">ยืนยันการลบรายการ?</h3>
+            <p class="text-xs text-gray-500 mb-6">คุณกำลังทำรายการลบงานนี้ออกจากการบันทึกและติดตามอย่างถาวร ข้อมูลจะไม่สามารถดึงกลับคืนมาได้</p>
+            <div class="flex justify-center gap-3 text-xs">
+                <button onclick="closeDeleteModal()" class="px-4 py-2.5 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 font-semibold transition">ยกเลิก</button>
+                <button id="confirm-delete-btn" class="px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-lg font-semibold shadow transition">ยืนยันการลบ</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification System -->
+    <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2"></div>
+
+    <!-- Initial Data & App Logic -->
+    <script>
+        // Multi-Year Sample Data sets for 2025 to 2028 (พ.ศ. 2568 - 2571)
+        const defaultTasks = [
+            {
+                id: "1",
+                month: "May",
+                year: "2569",
+                jobList: "ตรวจสอบระบบดับเพลิงและหัวฉีดน้ำ อาคารสำนักงานใหญ่",
+                location: "อาคาร A ชั้น 1-5",
+                issue: "เกจวัดแรงดันตกผิดปกติที่ชั้น 3",
+                taskType: "Preventive",
+                jrNo: "JR-2026-042",
+                prNo: "PR-690124",
+                poNo: "PO-32104",
+                priority: "High",
+                ownerDept: "Safety & Facilities",
+                assignedStaff: "สมชาย รักดี",
+                requestDate: "2026-05-01",
+                followupDate: "2026-05-08",
+                notes: "ติดต่อช่างภายนอกเข้ามาตรวจสอบรอยรั่วซึมแล้ว รอเสนอราคาเปลี่ยนซีลยาง",
+                dueDate: "2026-05-15",
+                completionDate: "2026-05-14",
+                status: "Completed"
+            },
+            {
+                id: "2",
+                month: "May",
+                year: "2569",
+                jobList: "ซ่อมบำรุงเปลี่ยนแผงวงจรไฟฟ้าแอร์ห้องเซิร์ฟเวอร์",
+                location: "ห้อง Server Room ชั้น 2",
+                issue: "คอมเพรสเซอร์แอร์ไม่ทำงาน อุณหภูมิห้องสูงเกิน 25 องศา",
+                taskType: "Corrective",
+                jrNo: "JR-2026-048",
+                prNo: "PR-690155",
+                poNo: "",
+                priority: "High",
+                ownerDept: "IT Operations",
+                assignedStaff: "วิชัย เรียนดี",
+                requestDate: "2026-05-10",
+                followupDate: "2026-05-12",
+                notes: "กำลังเปิด PR จัดซื้อแผงวงจรใหม่จากศูนย์บริการ",
+                dueDate: "2026-05-18",
+                completionDate: "",
+                status: "In Progress"
+            },
+            {
+                id: "3",
+                month: "April",
+                year: "2568",
+                jobList: "ซ่อมปรับปรุงโครงสร้างหลังคาโรงรถผู้มาติดต่อ (งานปีเก่า)",
+                location: "ลานจอดรถส่วนหน้า",
+                issue: "คานมีรอยร้าวและแผ่นเมทัลชีทหลุดรั่วซึมเมื่อฝนตกหนัก",
+                taskType: "Improvement",
+                jrNo: "JR-2025-015",
+                prNo: "PR-680012",
+                poNo: "PO-44021",
+                priority: "Medium",
+                ownerDept: "Safety & Facilities",
+                assignedStaff: "ธีรเดช ก้าวหน้า",
+                requestDate: "2025-04-05",
+                followupDate: "2025-04-12",
+                notes: "ซ่อมแซมเสร็จสิ้นตามแผนแล้ว ทดสอบความปลอดภัยผ่านการอนุมัติ",
+                dueDate: "2025-04-25",
+                completionDate: "2025-04-20",
+                status: "Completed"
+            },
+            {
+                id: "4",
+                month: "June",
+                year: "2568",
+                jobList: "จัดตั้งตู้เก็บสารเคมีทนไฟเกรดอุตสาหกรรมในห้องวิจัย",
+                location: "แล็บเคมี ชั้น 3",
+                issue: "ไม่มีตู้ที่ได้มาตรฐานป้องกันการเกิดเพลิงไหม้จัดเก็บไอสารระเหย",
+                taskType: "Special Project",
+                jrNo: "JR-2025-081",
+                prNo: "PR-681120",
+                poNo: "PO-44119",
+                priority: "High",
+                ownerDept: "Quality Control",
+                assignedStaff: "ดวงใจ แก้วงาม",
+                requestDate: "2025-06-01",
+                followupDate: "2025-06-15",
+                notes: "ตู้จัดส่งและดำเนินการเชื่อมต่อระบบสายกราวด์เสร็จสมบูรณ์",
+                dueDate: "2025-06-30",
+                completionDate: "2025-06-25",
+                status: "Completed"
+            },
+            {
+                id: "5",
+                month: "January",
+                year: "2570",
+                jobList: "แผนติดตั้งแผงโซลาร์เซลล์ระบบไฮบริดโรงงานเฟสใหม่",
+                location: "ดาดฟ้าโรงงานแห่งที่ 2",
+                issue: "เป้าหมายการประหยัดพลังงานและการลดคาร์บอนฟุตพริ้นท์ประจำปี",
+                taskType: "Special Project",
+                jrNo: "JR-2027-001",
+                prNo: "",
+                poNo: "",
+                priority: "Medium",
+                ownerDept: "Engineering",
+                assignedStaff: "สมยศ เก่งกาจ",
+                requestDate: "2027-01-10",
+                followupDate: "2027-01-15",
+                notes: "รอเข้าประชุมรับข้อกำหนดทางเทคนิค (TOR) กับที่ปรึกษาโครงการภายนอก",
+                dueDate: "2027-06-30",
+                completionDate: "",
+                status: "Not Started"
+            },
+            {
+                id: "6",
+                month: "October",
+                year: "2571",
+                jobList: "ตรวจสอบสลิงลิฟต์ขนส่งขนาดใหญ่ช่วงงานรอบปี 2571",
+                location: "คลังสินค้าอาคาร C",
+                issue: "หมดอายุรอบมาตรฐานความปลอดภัยการใช้งาน 3 ปีซ้อน",
+                taskType: "Routine",
+                jrNo: "",
+                prNo: "",
+                poNo: "",
+                priority: "High",
+                ownerDept: "Maintenance",
+                assignedStaff: "มานะ มุ่งมั่น",
+                requestDate: "2028-10-01",
+                followupDate: "2028-10-05",
+                notes: "บันทึกในปฏิทินงานล่วงหน้าเพื่อเตรียมขอเข้าพบผู้เชี่ยวชาญตรวจสอบลิฟต์",
+                dueDate: "2028-10-25",
+                completionDate: "",
+                status: "Not Started"
+            }
+        ];
+
+        let tasks = [];
+        let rowIdToDelete = null; // Store ID to avoid browser confirm blocking
+
+        window.addEventListener('DOMContentLoaded', () => {
+            const savedData = localStorage.getItem('task_tracker_excel_data');
+            if (savedData) {
+                try {
+                    tasks = JSON.parse(savedData);
+                } catch(e) {
+                    tasks = [...defaultTasks];
+                }
+            } else {
+                tasks = [...defaultTasks];
+                saveToLocalStorage();
+            }
+            
+            lucide.createIcons();
+            renderTable();
+            updateStatistics();
+        });
+
+        function saveToLocalStorage() {
+            localStorage.setItem('task_tracker_excel_data', JSON.stringify(tasks));
+        }
+
+        // Helper to update the dashboard charts & widgets dynamically
+        function updateStatistics() {
+            const today = new Date();
+            today.setHours(0,0,0,0);
+
+            // Get global Year filter value
+            const filterYear = document.getElementById('dashboard-year').value;
+
+            // Filter data specifically for chosen B.E. year or show all
+            const filteredForStats = tasks.filter(task => !filterYear || task.year === filterYear);
+
+            let total = filteredForStats.length;
+            let notStarted = 0;
+            let pending = 0; // In Progress
+            let completed = 0;
+            let overdue = 0;
+
+            // Analytical variables
+            const typeCounts = { "Corrective": 0, "Preventive": 0, "Improvement": 0, "Routine": 0, "Special Project": 0 };
+            const priorityCounts = { "High": 0, "Medium": 0, "Low": 0 };
+            const monthlyCounts = {
+                "January": 0, "February": 0, "March": 0, "April": 0, "May": 0, "June": 0,
+                "July": 0, "August": 0, "September": 0, "October": 0, "November": 0, "December": 0
+            };
+            const deptCounts = {};
+
+            filteredForStats.forEach(task => {
+                let statStatus = task.status || "Not Started";
+                
+                if (statStatus === "Completed") {
+                    completed++;
+                } else {
+                    if (statStatus === "In Progress") {
+                        pending++;
+                    } else {
+                        notStarted++;
+                    }
+
+                    // Overdue calculation
+                    if (task.dueDate) {
+                        const dueDateObj = new Date(task.dueDate);
+                        if (dueDateObj < today) {
+                            overdue++;
+                        }
+                    }
+                }
+
+                // Increment type
+                if (task.taskType && typeCounts.hasOwnProperty(task.taskType)) {
+                    typeCounts[task.taskType]++;
+                }
+                // Increment priority
+                if (task.priority && priorityCounts.hasOwnProperty(task.priority)) {
+                    priorityCounts[task.priority]++;
+                }
+                // Increment month
+                if (task.month && monthlyCounts.hasOwnProperty(task.month)) {
+                    monthlyCounts[task.month]++;
+                }
+                // Increment departments
+                if (task.ownerDept) {
+                    const dept = task.ownerDept.trim();
+                    deptCounts[dept] = (deptCounts[dept] || 0) + 1;
+                }
+            });
+
+            // Update Numerical Text Displays
+            document.getElementById('stat-total').textContent = total;
+            document.getElementById('stat-not-started').textContent = notStarted;
+            document.getElementById('stat-pending').textContent = pending;
+            document.getElementById('stat-completed').textContent = completed;
+            document.getElementById('stat-overdue').textContent = overdue;
+            
+            const rate = total > 0 ? Math.round((completed / total) * 100) : 0;
+            document.getElementById('stat-rate').textContent = `${rate}%`;
+
+            // RENDER GRAPHIC ELEMENT 1: Task Types Breakdown Ratio
+            renderTaskTypeBars(typeCounts, total);
+
+            // RENDER GRAPHIC ELEMENT 2: Priorities & Departments Distribution
+            renderPriorityDeptInsight(priorityCounts, deptCounts, total);
+
+            // RENDER GRAPHIC ELEMENT 3: Monthly Distribution Grid Heatmap
+            renderMonthlyHeatmap(monthlyCounts);
+        }
+
+        function renderTaskTypeBars(typeCounts, total) {
+            const container = document.getElementById('type-breakdown-container');
+            container.innerHTML = '';
+            
+            const types = Object.keys(typeCounts);
+            const colors = {
+                "Corrective": "bg-red-500",
+                "Preventive": "bg-emerald-500",
+                "Improvement": "bg-blue-500",
+                "Routine": "bg-yellow-500",
+                "Special Project": "bg-purple-500"
+            };
+
+            types.forEach(type => {
+                const count = typeCounts[type];
+                const pct = total > 0 ? Math.round((count / total) * 100) : 0;
+                
+                container.innerHTML += `
+                    <div>
+                        <div class="flex justify-between text-[11px] font-semibold text-gray-600 mb-1">
+                            <span>${type}</span>
+                            <span>${count} รายการ (${pct}%)</span>
+                        </div>
+                        <div class="w-full bg-gray-100 rounded-full h-2">
+                            <div class="${colors[type] || 'bg-gray-400'} h-2 rounded-full transition-all duration-500" style="width: ${pct}%"></div>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        function renderPriorityDeptInsight(priorityCounts, deptCounts, total) {
+            const container = document.getElementById('priority-dept-container');
+            container.innerHTML = '';
+
+            // Calculate Priority Breakdown representation
+            const highPct = total > 0 ? Math.round((priorityCounts["High"] / total) * 100) : 0;
+            const medPct = total > 0 ? Math.round((priorityCounts["Medium"] / total) * 100) : 0;
+            const lowPct = total > 0 ? Math.round((priorityCounts["Low"] / total) * 100) : 0;
+
+            // Find Top Department
+            let topDeptName = "ไม่มีข้อมูล";
+            let topDeptCount = 0;
+            Object.keys(deptCounts).forEach(dept => {
+                if (deptCounts[dept] > topDeptCount) {
+                    topDeptCount = deptCounts[dept];
+                    topDeptName = dept;
+                }
+            });
+
+            container.innerHTML = `
+                <!-- Priority progress row -->
+                <div class="space-y-2">
+                    <p class="font-semibold text-gray-500 mb-1 text-[11px]">สัดส่วนความเร่งด่วนของงาน (Priority Ratio)</p>
+                    <div class="flex h-5 rounded-lg overflow-hidden border border-gray-200">
+                        <div class="bg-red-500 text-white flex items-center justify-center font-bold text-[9px] transition-all" style="width: ${highPct}%" title="High: ${highPct}%">${highPct > 15 ? 'High' : ''}</div>
+                        <div class="bg-yellow-400 text-yellow-900 flex items-center justify-center font-bold text-[9px] transition-all" style="width: ${medPct}%" title="Medium: ${medPct}%">${medPct > 15 ? 'Med' : ''}</div>
+                        <div class="bg-blue-400 text-white flex items-center justify-center font-bold text-[9px] transition-all" style="width: ${lowPct}%" title="Low: ${lowPct}%">${lowPct > 15 ? 'Low' : ''}</div>
+                    </div>
+                    <div class="flex justify-between text-[9px] text-gray-400">
+                        <span>High: ${priorityCounts["High"]} งาน</span>
+                        <span>Medium: ${priorityCounts["Medium"]} งาน</span>
+                        <span>Low: ${priorityCounts["Low"]} งาน</span>
+                    </div>
+                </div>
+
+                <!-- Top Department Section -->
+                <div class="bg-emerald-50/70 p-2.5 rounded-lg border border-emerald-100 flex items-center justify-between">
+                    <div>
+                        <p class="text-[10px] text-emerald-800 font-bold uppercase tracking-wider">Top Department</p>
+                        <p class="text-xs font-bold text-gray-800 truncate max-w-[130px] mt-0.5" title="${topDeptName}">${topDeptName}</p>
+                    </div>
+                    <div class="text-right">
+                        <span class="text-[10px] text-emerald-700 bg-white border border-emerald-200 font-bold px-2 py-0.5 rounded-full inline-block">${topDeptCount} งาน</span>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderMonthlyHeatmap(monthlyCounts) {
+            const container = document.getElementById('monthly-grid-container');
+            container.innerHTML = '';
+
+            const monthsThai = {
+                "January": "ม.ค.", "February": "ก.พ.", "March": "มี.ค.", "April": "เม.ย.", 
+                "May": "พ.ค.", "June": "มิ.ย.", "July": "ก.ค.", "August": "ส.ค.", 
+                "September": "ก.ย.", "October": "ต.ค.", "November": "พ.ย.", "December": "ธ.ค."
+            };
+
+            Object.keys(monthlyCounts).forEach(mName => {
+                const count = monthlyCounts[mName];
+                let bgClass = "bg-gray-100 text-gray-400 border border-gray-200";
+                
+                if (count > 0 && count <= 1) {
+                    bgClass = "bg-emerald-100 text-emerald-800 border border-emerald-200 font-medium";
+                } else if (count > 1 && count <= 3) {
+                    bgClass = "bg-emerald-300 text-emerald-950 border border-emerald-400 font-semibold";
+                } else if (count > 3) {
+                    bgClass = "bg-[#107c41] text-white border border-[#0d6b37] font-bold";
+                }
+
+                container.innerHTML += `
+                    <div class="${bgClass} p-1.5 rounded flex flex-col justify-between h-11 shadow-2xs">
+                        <span class="text-[9px] block uppercase leading-none opacity-85">${monthsThai[mName]}</span>
+                        <span class="text-xs block leading-none mt-1 font-bold">${count}</span>
+                    </div>
+                `;
+            });
+        }
+
+        // Render rows with dual criteria filters
+        function renderTable() {
+            const tbody = document.getElementById('table-body');
+            tbody.innerHTML = '';
+
+            const searchTerm = document.getElementById('search-input').value.toLowerCase();
+            const filterMonth = document.getElementById('filter-month').value;
+            const filterPriority = document.getElementById('filter-priority').value;
+            const filterStatus = document.getElementById('filter-status').value;
+            const filterYear = document.getElementById('dashboard-year').value; // Get global year state
+
+            const today = new Date();
+            today.setHours(0,0,0,0);
+
+            let displayedCount = 0;
+
+            tasks.forEach((task, index) => {
+                let calculatedStatus = task.status || "Not Started";
+                
+                // If not completed but due date has passed, it is overdue
+                if (calculatedStatus !== "Completed" && task.dueDate) {
+                    const dueDateObj = new Date(task.dueDate);
+                    if (dueDateObj < today) {
+                        calculatedStatus = "Overdue";
+                    }
+                }
+
+                // Filter assertions
+                const matchesYear = !filterYear || task.year === filterYear;
+                const matchesSearch = 
+                    (task.jobList && task.jobList.toLowerCase().includes(searchTerm)) ||
+                    (task.location && task.location.toLowerCase().includes(searchTerm)) ||
+                    (task.issue && task.issue.toLowerCase().includes(searchTerm)) ||
+                    (task.jrNo && task.jrNo.toLowerCase().includes(searchTerm)) ||
+                    (task.prNo && task.prNo.toLowerCase().includes(searchTerm)) ||
+                    (task.poNo && task.poNo.toLowerCase().includes(searchTerm)) ||
+                    (task.assignedStaff && task.assignedStaff.toLowerCase().includes(searchTerm)) ||
+                    (task.ownerDept && task.ownerDept.toLowerCase().includes(searchTerm));
+
+                const matchesMonth = !filterMonth || task.month === filterMonth;
+                const matchesPriority = !filterPriority || task.priority === filterPriority;
+                const matchesStatus = !filterStatus || calculatedStatus === filterStatus;
+
+                if (matchesYear && matchesSearch && matchesMonth && matchesPriority && matchesStatus) {
+                    displayedCount++;
+
+                    // Color priority tags
+                    let priorityClass = "bg-gray-100 text-gray-800";
+                    if (task.priority === "High") priorityClass = "bg-red-100 text-red-800 font-bold";
+                    if (task.priority === "Medium") priorityClass = "bg-yellow-100 text-yellow-800";
+                    if (task.priority === "Low") priorityClass = "bg-blue-100 text-blue-800";
+
+                    // Status pill structures
+                    let statusBadge = "";
+                    if (calculatedStatus === "Completed") {
+                        statusBadge = `<span class="px-2.5 py-1 inline-flex text-[10px] leading-5 font-semibold rounded-full bg-green-100 text-green-800"><i data-lucide="check" class="w-3 h-3 mr-1"></i> เสร็จเรียบร้อย</span>`;
+                    } else if (calculatedStatus === "Overdue") {
+                        statusBadge = `<span class="px-2.5 py-1 inline-flex text-[10px] leading-5 font-semibold rounded-full bg-red-100 text-red-800 animate-pulse"><i data-lucide="clock" class="w-3 h-3 mr-1"></i> เลยกำหนดส่ง</span>`;
+                    } else if (calculatedStatus === "In Progress") {
+                        statusBadge = `<span class="px-2.5 py-1 inline-flex text-[10px] leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800"><i data-lucide="alert-circle" class="w-3 h-3 mr-1"></i> กำลังดำเนินการ</span>`;
+                    } else {
+                        statusBadge = `<span class="px-2.5 py-1 inline-flex text-[10px] leading-5 font-semibold rounded-full bg-gray-100 text-gray-600"><i data-lucide="circle-dashed" class="w-3 h-3 mr-1"></i> ยังไม่ได้เริ่มงาน</span>`;
+                    }
+
+                    const rowBgClass = index % 2 === 0 ? "bg-white hover:bg-emerald-50/40" : "bg-gray-50/70 hover:bg-emerald-50/40";
+
+                    const tr = document.createElement('tr');
+                    tr.className = `${rowBgClass} transition duration-150 cursor-pointer border-b border-gray-200`;
+                    tr.setAttribute('ondblclick', `openViewModal("${task.id}")`);
+
+                    tr.innerHTML = `
+                        <td class="p-2 border-r border-gray-200 text-center font-bold text-gray-500 bg-gray-100/50">${index + 1}</td>
+                        <td class="p-2 border-r border-gray-200 font-medium">${task.month || '-'} ${task.year ? '(' + task.year + ')' : '(2569)'}</td>
+                        <td class="p-2 border-r border-gray-200 truncate font-semibold text-gray-900" title="${task.jobList}">${task.jobList || '-'}</td>
+                        <td class="p-2 border-r border-gray-200 truncate" title="${task.location}">${task.location || '-'}</td>
+                        <td class="p-2 border-r border-gray-200 truncate text-gray-500" title="${task.issue}">${task.issue || '-'}</td>
+                        <td class="p-2 border-r border-gray-200">${task.taskType || '-'}</td>
+                        <td class="p-2 border-r border-gray-200 font-mono text-xs text-blue-600">${task.jrNo || '-'}</td>
+                        <td class="p-2 border-r border-gray-200 font-mono text-xs text-purple-600">${task.prNo || '-'}</td>
+                        <td class="p-2 border-r border-gray-200 font-mono text-xs text-green-700">${task.poNo || '-'}</td>
+                        <td class="p-2 border-r border-gray-200 text-center">
+                            <span class="px-2.5 py-0.5 rounded text-[10px] font-semibold ${priorityClass}">${task.priority}</span>
+                        </td>
+                        <td class="p-2 border-r border-gray-200">${task.ownerDept || '-'}</td>
+                        <td class="p-2 border-r border-gray-200">${task.assignedStaff || '-'}</td>
+                        <td class="p-2 border-r border-gray-200 text-center text-gray-600">${formatDate(task.requestDate)}</td>
+                        <td class="p-2 border-r border-gray-200 text-center text-gray-600">${formatDate(task.followupDate)}</td>
+                        <td class="p-2 border-r border-gray-200 truncate text-gray-500 italic" title="${task.notes}">${task.notes || '-'}</td>
+                        <td class="p-2 border-r border-gray-200 text-center font-semibold ${calculatedStatus === 'Overdue' ? 'text-red-600' : 'text-gray-600'}">${formatDate(task.dueDate)}</td>
+                        <td class="p-2 border-r border-gray-200 text-center text-green-700 font-medium">${formatDate(task.completionDate)}</td>
+                        <td class="p-2 border-r border-gray-200 text-center">${statusBadge}</td>
+                        <td class="p-2 text-center flex items-center justify-center gap-1 bg-gray-50/40">
+                            <button onclick="event.stopPropagation(); openViewModal('${task.id}')" class="p-1 hover:bg-blue-100 text-blue-600 rounded transition" title="ดูรายละเอียด">
+                                <i data-lucide="eye" class="w-4 h-4"></i>
+                            </button>
+                            <button onclick="event.stopPropagation(); openEditModal('${task.id}')" class="p-1 hover:bg-yellow-100 text-yellow-600 rounded transition" title="แก้ไข">
+                                <i data-lucide="edit-2" class="w-4 h-4"></i>
+                            </button>
+                            <button onclick="event.stopPropagation(); openDeleteConfirm('${task.id}')" class="p-1 hover:bg-red-100 text-red-600 rounded transition" title="ลบ">
+                                <i data-lucide="trash-2" class="w-4 h-4"></i>
+                            </button>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                }
+            });
+
+            document.getElementById('displayed-count').textContent = displayedCount;
+            document.getElementById('total-count').textContent = tasks.length;
+            lucide.createIcons();
+        }
+
+        function applyFilters() {
+            renderTable();
+            updateStatistics();
+        }
+
+        // Handle auto-dating of completion
+        function handleStatusChange() {
+            const statusVal = document.getElementById('form-status').value;
+            const compDateInput = document.getElementById('form-completion-date');
+            
+            if (statusVal === 'Completed') {
+                if (!compDateInput.value) {
+                    const todayStr = new Date().toISOString().slice(0, 10);
+                    compDateInput.value = todayStr;
+                    showToast("กรอกวันที่เสร็จจริงเป็นวันปัจจุบันให้อัตโนมัติ", "success");
+                }
+            } else {
+                compDateInput.value = "";
+            }
+        }
+
+        // Modal triggers
+        function openAddModal() {
+            document.getElementById('task-id').value = '';
+            document.getElementById('task-form').reset();
+            document.getElementById('modal-title').textContent = 'เพิ่มข้อมูลงานบันทึกใหม่';
+            
+            const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+            const currentMonthName = monthNames[new Date().getMonth()];
+            document.getElementById('form-month').value = currentMonthName;
+            
+            // Set year inside form to match active selected year or default 2569 (2026)
+            const activeYear = document.getElementById('dashboard-year').value;
+            document.getElementById('form-year').value = activeYear || "2569";
+            document.getElementById('form-status').value = "Not Started";
+
+            document.getElementById('task-modal').classList.remove('hidden');
+        }
+
+        function openEditModal(id) {
+            const task = tasks.find(t => t.id === id);
+            if (!task) return;
+
+            document.getElementById('task-id').value = task.id;
+            document.getElementById('form-month').value = task.month || '';
+            document.getElementById('form-year').value = task.year || '2569';
+            document.getElementById('form-job-list').value = task.jobList || '';
+            document.getElementById('form-location').value = task.location || '';
+            document.getElementById('form-issue').value = task.issue || '';
+            document.getElementById('form-task-type').value = task.taskType || '';
+            document.getElementById('form-jr-no').value = task.jrNo || '';
+            document.getElementById('form-pr-no').value = task.prNo || '';
+            document.getElementById('form-po-no').value = task.poNo || '';
+            document.getElementById('form-priority').value = task.priority || 'Medium';
+            document.getElementById('form-owner-dept').value = task.ownerDept || '';
+            document.getElementById('form-assigned-staff').value = task.assignedStaff || '';
+            document.getElementById('form-request-date').value = task.requestDate || '';
+            document.getElementById('form-followup-date').value = task.followupDate || '';
+            document.getElementById('form-due-date').value = task.dueDate || '';
+            document.getElementById('form-notes').value = task.notes || '';
+            document.getElementById('form-status').value = task.status || 'Not Started';
+            document.getElementById('form-completion-date').value = task.completionDate || '';
+
+            document.getElementById('modal-title').textContent = 'แก้ไขรายละเอียดงาน';
+            document.getElementById('task-modal').classList.remove('hidden');
+        }
+
+        function closeModal() {
+            document.getElementById('task-modal').classList.add('hidden');
+        }
+
+        // Custom Delete Dialog system (Avoid standard window alerts)
+        function openDeleteConfirm(id) {
+            rowIdToDelete = id;
+            document.getElementById('delete-modal').classList.remove('hidden');
+            
+            // Assign execution handler to button
+            document.getElementById('confirm-delete-btn').onclick = () => {
+                executeDelete();
+            }
+        }
+
+        function closeDeleteModal() {
+            document.getElementById('delete-modal').classList.add('hidden');
+            rowIdToDelete = null;
+        }
+
+        function executeDelete() {
+            if (rowIdToDelete) {
+                tasks = tasks.filter(t => t.id !== rowIdToDelete);
+                saveToLocalStorage();
+                renderTable();
+                updateStatistics();
+                closeDeleteModal();
+                showToast("ลบข้อมูลงานออกจากแผ่นงานแล้ว", "error");
+            }
+        }
+
+        // View Detailed card function
+        function openViewModal(id) {
+            const task = tasks.find(t => t.id === id);
+            if (!task) return;
+
+            let calculatedStatus = task.status || "Not Started";
+            const today = new Date();
+            today.setHours(0,0,0,0);
+            if (calculatedStatus !== "Completed" && task.dueDate) {
+                const dueDateObj = new Date(task.dueDate);
+                if (dueDateObj < today) {
+                    calculatedStatus = "Overdue";
+                }
+            }
+
+            let statusBadge = "";
+            if (calculatedStatus === "Completed") {
+                statusBadge = `<span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">เสร็จเรียบร้อย (Completed)</span>`;
+            } else if (calculatedStatus === "Overdue") {
+                statusBadge = `<span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800 animate-pulse">เลยกำหนดส่ง (Overdue)</span>`;
+            } else if (calculatedStatus === "In Progress") {
+                statusBadge = `<span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">กำลังดำเนินการ (In Progress)</span>`;
+            } else {
+                statusBadge = `<span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-600">ยังไม่ได้เริ่มงาน (Not Started)</span>`;
+            }
+
+            const container = document.getElementById('view-details-content');
+            container.innerHTML = `
+                <div class="grid grid-cols-2 gap-4 border-b pb-4">
+                    <div>
+                        <span class="block text-xs text-gray-500 font-semibold uppercase">Month & Year / เดือน และ ปี พ.ศ.</span>
+                        <span class="text-sm font-medium text-gray-900">${task.month || '-'} (${task.year || '2569'})</span>
+                    </div>
+                    <div>
+                        <span class="block text-xs text-gray-500 font-semibold uppercase">Status / สถานะ</span>
+                        <span class="inline-block mt-0.5">${statusBadge}</span>
+                    </div>
+                </div>
+                
+                <div class="space-y-3 pt-2">
+                    <div>
+                        <span class="block text-xs text-gray-500 font-semibold">Job List / รายการงาน</span>
+                        <p class="text-sm font-bold text-gray-900 bg-gray-50 p-2.5 rounded border border-gray-100 whitespace-normal break-words">${task.jobList || '-'}</p>
+                    </div>
+                    
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <span class="block text-xs text-gray-500 font-semibold">Location / สถานที่</span>
+                            <p class="text-sm font-medium text-gray-900">${task.location || '-'}</p>
+                        </div>
+                        <div>
+                            <span class="block text-xs text-gray-500 font-semibold">Task Type / ประเภทงาน</span>
+                            <p class="text-sm font-medium text-gray-900">${task.taskType || '-'}</p>
+                        </div>
+                    </div>
+
+                    <div>
+                        <span class="block text-xs text-gray-500 font-semibold">Issue / Anomaly / ปัญหาที่พบ</span>
+                        <p class="text-sm text-gray-800 bg-red-50/50 p-2 rounded border border-red-100">${task.issue || '-'}</p>
+                    </div>
+
+                    <div class="grid grid-cols-3 gap-2 bg-gray-50 p-2.5 rounded border border-gray-100 font-mono text-xs">
+                        <div>
+                            <span class="block text-gray-500 font-semibold">JR No.</span>
+                            <span class="text-blue-600 font-bold">${task.jrNo || '-'}</span>
+                        </div>
+                        <div>
+                            <span class="block text-gray-500 font-semibold">PR No.</span>
+                            <span class="text-purple-600 font-bold">${task.prNo || '-'}</span>
+                        </div>
+                        <div>
+                            <span class="block text-gray-500 font-semibold">PO No.</span>
+                            <span class="text-green-700 font-bold">${task.poNo || '-'}</span>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <span class="block text-xs text-gray-500 font-semibold">Priority / ความสำคัญ</span>
+                            <span class="text-sm font-semibold">${task.priority || 'Medium'}</span>
+                        </div>
+                        <div>
+                            <span class="block text-xs text-gray-500 font-semibold">Owner Dept / แผนกที่รับผิดชอบ</span>
+                            <span class="text-sm font-medium text-gray-900">${task.ownerDept || '-'}</span>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <span class="block text-xs text-gray-500 font-semibold">Assigned Staff / ผู้รับผิดชอบ</span>
+                            <span class="text-sm font-medium text-gray-900">${task.assignedStaff || '-'}</span>
+                        </div>
+                        <div>
+                            <span class="block text-xs text-gray-500 font-semibold">Request Date / วันที่แจ้งขอ</span>
+                            <span class="text-sm font-medium text-gray-900">${formatDate(task.requestDate)}</span>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-3 gap-2">
+                        <div>
+                            <span class="block text-xs text-gray-500 font-semibold">Follow-up Date</span>
+                            <span class="text-sm font-medium text-gray-900">${formatDate(task.followupDate)}</span>
+                        </div>
+                        <div>
+                            <span class="block text-xs text-gray-500 font-semibold">Due Date</span>
+                            <span class="text-sm font-bold text-red-600">${formatDate(task.dueDate)}</span>
+                        </div>
+                        <div>
+                            <span class="block text-xs text-gray-500 font-semibold">Actual Completion</span>
+                            <span class="text-sm font-bold text-green-700">${formatDate(task.completionDate)}</span>
+                        </div>
+                    </div>
+
+                    <div>
+                        <span class="block text-xs text-gray-500 font-semibold">Follow-up / Tracking Notes</span>
+                        <p class="text-sm text-gray-700 italic bg-yellow-50/50 p-2.5 rounded border border-yellow-100 whitespace-pre-line">${task.notes || '-'}</p>
+                    </div>
+                </div>
+            `;
+
+            document.getElementById('view-edit-btn').onclick = () => {
+                closeViewModal();
+                openEditModal(id);
+            };
+
+            document.getElementById('view-modal').classList.remove('hidden');
+            lucide.createIcons();
+        }
+
+        function closeViewModal() {
+            document.getElementById('view-modal').classList.add('hidden');
+        }
+
+        // Form Submit Actions
+        function saveTask(event) {
+            event.preventDefault();
+
+            const id = document.getElementById('task-id').value;
+            const taskData = {
+                id: id || Date.now().toString(),
+                month: document.getElementById('form-month').value,
+                year: document.getElementById('form-year').value,
+                jobList: document.getElementById('form-job-list').value,
+                location: document.getElementById('form-location').value,
+                issue: document.getElementById('form-issue').value,
+                taskType: document.getElementById('form-task-type').value,
+                jrNo: document.getElementById('form-jr-no').value,
+                prNo: document.getElementById('form-pr-no').value,
+                poNo: document.getElementById('form-po-no').value,
+                priority: document.getElementById('form-priority').value,
+                ownerDept: document.getElementById('form-owner-dept').value,
+                assignedStaff: document.getElementById('form-assigned-staff').value,
+                requestDate: document.getElementById('form-request-date').value,
+                followupDate: document.getElementById('form-followup-date').value,
+                dueDate: document.getElementById('form-due-date').value,
+                notes: document.getElementById('form-notes').value,
+                status: document.getElementById('form-status').value,
+                completionDate: document.getElementById('form-completion-date').value
+            };
+
+            if (id) {
+                const index = tasks.findIndex(t => t.id === id);
+                if (index !== -1) {
+                    tasks[index] = taskData;
+                    showToast("อัปเดตข้อมูลแถวเรียบร้อยแล้ว", "success");
+                }
+            } else {
+                tasks.push(taskData);
+                showToast("เพิ่มงานบันทึกใหม่สำเร็จ", "success");
+            }
+
+            saveToLocalStorage();
+            closeModal();
+            renderTable();
+            updateStatistics();
+        }
+
+        function formatDate(dateStr) {
+            if (!dateStr) return '-';
+            const parts = dateStr.split('-');
+            if (parts.length === 3) {
+                return `${parts[2]}/${parts[1]}/${parts[0]}`;
+            }
+            return dateStr;
+        }
+
+        // Export Function with multi-year CSV columns
+        function exportToCSV() {
+            if (tasks.length === 0) {
+                showToast("ไม่มีข้อมูลให้ออกรายงาน", "warning");
+                return;
+            }
+
+            let csvContent = "\uFEFF";
+            const headers = [
+                "No.", "Month", "Year (B.E.)", "Job List", "Location", "Issue / Anomaly", 
+                "Task Type", "JR No.", "PR No.", "PO No.", "Priority", 
+                "Owner Department", "Assigned Staff", "Request Date", 
+                "Follow-up Date", "Follow-up / Tracking Notes", "Due Date", 
+                "Actual Completion Date", "Status"
+            ];
+            
+            csvContent += headers.map(h => `"${h.replace(/"/g, '""')}"`).join(",") + "\r\n";
+
+            tasks.forEach((task, index) => {
+                const row = [
+                    index + 1,
+                    task.month || "",
+                    task.year || "2569",
+                    task.jobList || "",
+                    task.location || "",
+                    task.issue || "",
+                    task.taskType || "",
+                    task.jrNo || "",
+                    task.prNo || "",
+                    task.poNo || "",
+                    task.priority || "",
+                    task.ownerDept || "",
+                    task.assignedStaff || "",
+                    task.requestDate || "",
+                    task.followupDate || "",
+                    task.notes || "",
+                    task.dueDate || "",
+                    task.completionDate || "",
+                    task.status || "Not Started"
+                ];
+                csvContent += row.map(v => `"${String(v).replace(/"/g, '""')}"`).join(",") + "\r\n";
+            });
+
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            const url = URL.createObjectURL(blob);
+            link.setAttribute("href", url);
+            
+            const timestamp = new Date().toISOString().slice(0,10);
+            link.setAttribute("download", `Task_Tracker_Sheet_${timestamp}.csv`);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            showToast("ดาวน์โหลดไฟล์ Excel (.csv) สำเร็จ!", "success");
+        }
+
+        function showToast(message, type = "success") {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            
+            let bgClass = "bg-green-600";
+            if (type === "error") bgClass = "bg-red-600";
+            if (type === "warning") bgClass = "bg-yellow-500";
+
+            toast.className = `${bgClass} text-white px-4 py-2.5 rounded-lg shadow-lg text-xs font-semibold flex items-center gap-2 transform translate-y-5 opacity-0 transition-all duration-300`;
+            toast.innerHTML = `
+                <i data-lucide="info" class="w-4 h-4"></i>
+                <span>${message}</span>
+            `;
+            
+            container.appendChild(toast);
+            lucide.createIcons();
+
+            setTimeout(() => {
+                toast.classList.remove('translate-y-5', 'opacity-0');
+            }, 10);
+
+            setTimeout(() => {
+                toast.classList.add('translate-y-5', 'opacity-0');
+                setTimeout(() => {
+                    toast.remove();
+                }, 300);
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
